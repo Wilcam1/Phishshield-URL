@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PhishShield — Verificador de URLs</title>
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="description" content="Detector simple de fraudes (phishing/smishing) para PYMEs." />
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="preload" href="styles.css" as="style">
+</head>
+
+<body>
+  <div class="top-alert security-disclaimer" role="alert" aria-live="polite">
+    <div class="alert-content">
+      <span class="alert-icon" aria-hidden="true">⚠️</span>
+      <div class="alert-text">
+        <strong>USO EDUCATIVO:</strong> Las heurísticas no son infalibles. No reemplaza controles oficiales de su banco
+        o navegador.
+      </div>
+      <button class="close-alert" aria-label="Cerrar advertencia">×</button>
+    </div>
+  </div>
+
+  <header class="container" role="banner">
+    <div class="header-row">
+      <div>
+        <h1>🛡️ PhishShield — Verificador de URLs</h1>
+        <p class="subtitle">
+          Proyecto para detectar fraudes que roban datos bancarios por correo con páginas falsas.
+          Pega un enlace sospechoso y obtén una evaluación rápida basada en heurísticas.
+        </p>
+      </div>
+      <button id="darkToggle" class="dark-toggle" aria-label="Cambiar modo oscuro/claro" title="Modo oscuro">
+        🌙
+      </button>
+    </div>
+  </header>
+
+  <main class="container" role="main">
+    <section class="card" aria-labelledby="analizar-enlace">
+      <h2 id="analizar-enlace" class="card-title">🔗 Analiza un enlace</h2>
+      <div class="input-row">
+        <label for="urlInput" class="sr-only">Ingresa la URL a analizar</label>
+        <input id="urlInput" type="url" placeholder="https://ejemplo.com/login?session=..." aria-describedby="urlHelp"
+          required />
+        <button id="analyzeBtn" type="button">Analizar</button>
+        <button id="reportBtnTop" class="outline" type="button">Reportar phishing</button>
+      </div>
+      <p id="urlHelp" class="sr-only">Ingresa una URL completa comenzando con http:// o https://</p>
+
+      <div id="result" class="result" hidden role="alert" aria-live="polite">
+        <div class="result-head">
+          <div class="result-url">Resultado para: <span id="urlOut" class="mono"></span></div>
+          <div id="riskBadge" class="badge">Riesgo</div>
+        </div>
+
+        <div class="risk-meter">
+          <div class="risk-labels">
+            <span class="risk-label">Bajo riesgo</span>
+            <span class="risk-label">Alto riesgo</span>
+          </div>
+          <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-fill" id="riskProgress"></div>
+          </div>
+          <div class="risk-score" id="riskScore">Puntuación: -/10</div>
+        </div>
+
+        <div id="securityResult" class="security-result">
+        </div>
+
+        <div class="analysis-details">
+          <div class="details-actions">
+            <button class="toggle-details" id="toggleDetails" aria-expanded="false">
+              📊 <span class="toggle-text">Ver análisis detallado</span>
+            </button>
+            <button id="copyResultBtn" class="copy-btn" title="Copiar resultado al portapapeles"
+              aria-label="Copiar resultado">
+              📋 Copiar
+            </button>
+          </div>
+          <div class="details-content" id="detailsContent" aria-hidden="true">
+            <div class="details-grid" id="detailsGrid">
+            </div>
+          </div>
+        </div>
+
+        <div class="search-history-section">
+          <div class="history-header">
+            <h3>📝 Búsquedas recientes</h3>
+            <button id="clearHistoryBtn" class="clear-btn" title="Limpiar historial">
+              🗑️ Limpiar
+            </button>
+          </div>
+          <div class="search-history" id="searchHistory">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel de Estadísticas en vivo -->
+    <section class="card stats-card" id="statsPanel">
+      <h3>📊 Estadísticas en vivo</h3>
+      <div class="stats-grid">
+        <div class="stat-item stat-clickable" data-filter="todas" title="Ver todas las URLs">
+          <span class="stat-number" id="statTotal">-</span>
+          <span class="stat-label">URLs analizadas</span>
+          <span class="stat-hint">👁️ ver</span>
+        </div>
+        <div class="stat-item stat-danger stat-clickable" data-filter="alto" title="Ver URLs de riesgo alto">
+          <span class="stat-number" id="statAlto">-</span>
+          <span class="stat-label">Riesgo alto</span>
+          <span class="stat-hint">👁️ ver</span>
+        </div>
+        <div class="stat-item stat-warning stat-clickable" data-filter="medio" title="Ver URLs de riesgo medio">
+          <span class="stat-number" id="statMedio">-</span>
+          <span class="stat-label">Riesgo medio</span>
+          <span class="stat-hint">👁️ ver</span>
+        </div>
+        <div class="stat-item stat-safe stat-clickable" data-filter="bajo" title="Ver URLs de riesgo bajo">
+          <span class="stat-number" id="statBajo">-</span>
+          <span class="stat-label">Riesgo bajo</span>
+          <span class="stat-hint">👁️ ver</span>
+        </div>
+      </div>
+      <div class="stats-footer">
+        <small class="muted" id="statsUpdated">Actualizando...</small>
+        <button id="refreshStatsBtn" class="refresh-btn" title="Actualizar estadísticas">🔄 Actualizar</button>
+      </div>
+    </section>
+
+    <!-- Modal de URLs por categoría -->
+    <div id="urlsModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="modalTitle">URLs analizadas</h3>
+          <button id="closeModal" class="modal-close" aria-label="Cerrar">×</button>
+        </div>
+        <div id="modalBody" class="modal-body">
+          <!-- Lista de URLs inyectada por JS -->
+        </div>
+      </div>
+    </div>
+
+
+
+    <section class="card">
+      <h3>Prueba con URLs seguras de ejemplo</h3>
+      <div class="chips">
+        <button class="chip" data-demo="https://www.bancolombia.com/personas/beneficios/tarjeta-debito">banco
+          (typo)</button>
+        <button class="chip" data-demo="https://www.shein.com.co/user/auth/login?direction=nav">shein promo</button>
+        <button class="chip"
+          data-demo="https://www.temu.com/co/attendance/co-blackfriday25-p1-52385-1-a-psurl.html">acortador</button>
+        <button class="chip" data-demo="https://envios-gratis-temu.com/redirect?to=login">redirect</button>
+        <button class="chip" data-demo="http://192.168.1.1/login">IP directa</button>
+        <button class="chip" data-demo="https://secure-bancolombia-login.com/verificar">typosquatting</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module">
+    import { PhishShieldApp } from './client/app.js';
+    import { UIManager } from './client/uiManager.js';
+    import { ApiClient } from './client/apiClient.js';
+    import { StorageManager } from './client/storage.js';
+
+    // Dark mode: restaurar preferencia guardada
+    const savedTheme = localStorage.getItem('phishshield-theme');
+    if (savedTheme === 'dark') {
+      document.body.classList.add('dark');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const uiManager = new UIManager();
+      const apiClient = new ApiClient();
+      const storageManager = new StorageManager();
+      const app = new PhishShieldApp(uiManager, apiClient, storageManager);
+
+      // ── Dark mode toggle ──────────────────────────────────
+      const darkToggle = document.getElementById('darkToggle');
+      const updateIcon = () => {
+        darkToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        darkToggle.title = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo oscuro';
+      };
+      updateIcon();
+      darkToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('phishshield-theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        updateIcon();
+      });
+
+      // ── #3 Copiar resultado ───────────────────────────────
+      const copyBtn = document.getElementById('copyResultBtn');
+      copyBtn.addEventListener('click', () => {
+        const urlOut = document.getElementById('urlOut')?.textContent?.trim();
+        const riskScore = document.getElementById('riskScore')?.textContent?.trim();
+        const badge = document.getElementById('riskBadge')?.textContent?.trim();
+        if (!urlOut) {
+          return; // sin resultado aún
+        }
+        // Recoger indicadores del resultado
+        const factors = [...document.querySelectorAll('#securityResult li')]
+          .map(li => '• ' + li.textContent.trim()).join('\n');
+
+        const text = [
+          '🛡️ PhishShield — Resultado de análisis',
+          '─────────────────────────────────',
+          `URL:    ${urlOut}`,
+          `Riesgo: ${badge}`,
+          `${riskScore}`,
+          factors ? `\nIndicadores encontrados:\n${factors}` : '',
+          '─────────────────────────────────',
+          `Analizado: ${new Date().toLocaleString('es-CO')}`
+        ].filter(Boolean).join('\n');
+
+        navigator.clipboard.writeText(text).then(() => {
+          copyBtn.textContent = '✅ Copiado';
+          copyBtn.classList.add('copied');
+          setTimeout(() => {
+            copyBtn.textContent = '📋 Copiar';
+            copyBtn.classList.remove('copied');
+          }, 2000);
+        }).catch(() => {
+          copyBtn.textContent = '❌ Error';
+          setTimeout(() => { copyBtn.textContent = '📋 Copiar'; }, 2000);
+        });
+      });
+
+      // ── #4 Limpiar historial ──────────────────────────────
+      const clearBtn = document.getElementById('clearHistoryBtn');
+      clearBtn.addEventListener('click', () => {
+        if (!confirm('¿Limpiar todo el historial de búsquedas?')) return;
+        storageManager.clearHistory();
+        document.getElementById('searchHistory').innerHTML =
+          '<p class="muted">Historial limpiado.</p>';
+        clearBtn.textContent = '✅ Limpiado';
+        setTimeout(() => { clearBtn.textContent = '🗑️ Limpiar'; }, 2000);
+      });
+
+      // ── #2 Estadísticas en vivo ───────────────────────────
+      const statTotal = document.getElementById('statTotal');
+      const statAlto = document.getElementById('statAlto');
+      const statMedio = document.getElementById('statMedio');
+      const statBajo = document.getElementById('statBajo');
+      const statsUpdated = document.getElementById('statsUpdated');
+      const refreshBtn = document.getElementById('refreshStatsBtn');
+
+      function animarNumero(el, destino) {
+        const inicio = parseInt(el.textContent) || 0;
+        const diff = destino - inicio;
+        const duracion = 600;
+        const pasos = 20;
+        let paso = 0;
+        const intervalo = setInterval(() => {
+          paso++;
+          el.textContent = Math.round(inicio + (diff * paso / pasos));
+          if (paso >= pasos) {
+            el.textContent = destino;
+            clearInterval(intervalo);
+          }
+        }, duracion / pasos);
+      }
+
+      async function cargarEstadisticas() {
+        const icon = refreshBtn.querySelector ? refreshBtn : null;
+        refreshBtn.classList.add('spinning');
+        try {
+          const res = await fetch('/estadisticas');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          // El backend retorna: total_analisis y distribucion_riesgo: {alto, medio, bajo}
+          const distribucion = data.distribucion_riesgo || {};
+          animarNumero(statTotal, data.total_analisis || 0);
+          animarNumero(statAlto, distribucion.alto || 0);
+          animarNumero(statMedio, distribucion.medio || 0);
+          animarNumero(statBajo, distribucion.bajo || 0);
+          statsUpdated.textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-CO');
+        } catch (e) {
+          statsUpdated.textContent = 'Error al obtener estadísticas';
+        } finally {
+          refreshBtn.classList.remove('spinning');
+        }
+      }
+
+      refreshBtn.addEventListener('click', cargarEstadisticas);
+      cargarEstadisticas(); // carga inicial
+      setInterval(cargarEstadisticas, 60000); // auto-refresh cada 60s
+
+      // ── Modal: ver URLs por categoría ─────────────────────
+      const modal = document.getElementById('urlsModal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
+      const closeModal = document.getElementById('closeModal');
+
+      const TITULOS = {
+        todas: '🔍 Todas las URLs analizadas',
+        alto: '🔴 URLs de riesgo alto',
+        medio: '🟡 URLs de riesgo medio',
+        bajo: '🟢 URLs de riesgo bajo'
+      };
+
+      const BADGE_CLASS = {
+        alto: 'danger', medio: 'warning', bajo: 'safe'
+      };
+
+      async function abrirModalCategoria(filtro) {
+        modalTitle.textContent = TITULOS[filtro] || 'URLs analizadas';
+        modalBody.innerHTML = '<p class="modal-empty">Cargando...</p>';
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+
+        try {
+          const res = await fetch('/historial?limite=200');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const historial = await res.json();
+
+          const filtradas = filtro === 'todas'
+            ? historial
+            : historial.filter(e => e.riesgo === filtro);
+
+          if (!filtradas.length) {
+            modalBody.innerHTML = '<p class="modal-empty">No hay URLs en esta categoría aún.</p>';
+            return;
+          }
+
+          modalBody.innerHTML = filtradas.map(e => {
+            const fecha = new Date(e.timestamp).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+            const badgeClass = BADGE_CLASS[e.riesgo] || 'safe';
+            return `
+              <div class="modal-url-item">
+                <span class="modal-url-text" title="${e.url}">${e.url}</span>
+                <div class="modal-url-meta">
+                  <span class="badge ${e.riesgo === 'alto' ? 'alto' : e.riesgo === 'medio' ? 'medio' : 'bajo'}">${e.riesgo.toUpperCase()}</span>
+                  <span class="modal-url-score">${e.puntuacion}/10 · ${fecha}</span>
+                </div>
+              </div>`;
+          }).join('');
+
+        } catch (err) {
+          modalBody.innerHTML = '<p class="modal-empty">Error al cargar el historial.</p>';
+        }
+      }
+
+      function cerrarModal() {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+      }
+
+      // Clic en cards
+      document.querySelectorAll('.stat-clickable').forEach(card => {
+        card.addEventListener('click', () => abrirModalCategoria(card.dataset.filter));
+      });
+
+      // Cerrar modal
+      closeModal.addEventListener('click', cerrarModal);
+      modal.addEventListener('click', e => { if (e.target === modal) cerrarModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+    });
+  </script>
+
+  <div id="notificacion" class="toast" hidden role="alert"></div>
+</body>
+
+</html>

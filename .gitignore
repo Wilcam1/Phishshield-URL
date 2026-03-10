@@ -1,0 +1,16 @@
+# Variables de entorno (contienen API keys — NUNCA subir a git)
+.env
+
+# Dependencias
+node_modules/
+
+# Archivos de sistema macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
