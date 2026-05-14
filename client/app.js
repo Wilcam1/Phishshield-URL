@@ -19,7 +19,7 @@ class PhishShieldApp {
     document.getElementById("analyzeBtn").addEventListener("click", () => this.analyzeUrl());
     document.getElementById("reportBtnTop").addEventListener("click", () => this.reportUrl());
 
-    document.querySelectorAll(".chip").forEach(btn => {
+    document.querySelectorAll(".demo-btn").forEach(btn => {
       btn.addEventListener("click", () => this.loadExample(btn.dataset.demo));
     });
 

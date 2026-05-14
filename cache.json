@@ -1,0 +1,59 @@
+{
+  "https://www.bancolombia.com/personas/beneficios/tarjeta-debito": {
+    "timestamp": 1778731733997,
+    "data": {
+      "url": "https://www.bancolombia.com/personas/beneficios/tarjeta-debito",
+      "riesgo": "alto",
+      "indicadores": [],
+      "puntuacion": 7,
+      "caracteristicas_tecnicas": {
+        "dominio": "www.bancolombia.com",
+        "protocolo": "https",
+        "subdominios": 1,
+        "esHTTPS": true,
+        "puerto": "443",
+        "longitudRuta": 35,
+        "numeroParametros": 0,
+        "parametrosSensibles": [],
+        "tieneGuionesMultiples": false,
+        "tieneNumerosEnDominio": false,
+        "esIP": false,
+        "longitudTotal": 62
+      },
+      "factores_puntuacion": [
+        "Reportado manualmente como Phishing (+10)",
+        "Verificado en Safe Browsing (-1)",
+        "Verificado limpio por VirusTotal (-2)"
+      ],
+      "timestamp": "2026-05-14T04:08:53.995Z"
+    }
+  },
+  "https://www.shein.com.co/user/auth/login?direction=nav": {
+    "timestamp": 1778731783563,
+    "data": {
+      "url": "https://www.shein.com.co/user/auth/login?direction=nav",
+      "riesgo": "bajo",
+      "indicadores": [],
+      "puntuacion": 0,
+      "caracteristicas_tecnicas": {
+        "dominio": "www.shein.com.co",
+        "protocolo": "https",
+        "subdominios": 2,
+        "esHTTPS": true,
+        "puerto": "443",
+        "longitudRuta": 16,
+        "numeroParametros": 1,
+        "parametrosSensibles": [],
+        "tieneGuionesMultiples": false,
+        "tieneNumerosEnDominio": false,
+        "esIP": false,
+        "longitudTotal": 54
+      },
+      "factores_puntuacion": [
+        "Verificado en Safe Browsing (-1)",
+        "Verificado limpio por VirusTotal (-2)"
+      ],
+      "timestamp": "2026-05-14T04:09:43.561Z"
+    }
+  }
+}

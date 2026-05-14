@@ -9,6 +9,8 @@
   <meta name="description" content="Detector simple de fraudes (phishing/smishing) para PYMEs." />
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <link rel="preload" href="styles.css" as="style">
+  <!-- Animate.css -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 </head>
 
 <body>
@@ -32,9 +34,14 @@
           Pega un enlace sospechoso y obtén una evaluación rápida basada en heurísticas.
         </p>
       </div>
-      <button id="darkToggle" class="dark-toggle" aria-label="Cambiar modo oscuro/claro" title="Modo oscuro">
-        🌙
-      </button>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <button id="adminBtn" class="outline" aria-label="Panel de Administrador" title="Administración">
+          👮 Admin
+        </button>
+        <button id="darkToggle" class="dark-toggle" aria-label="Cambiar modo oscuro/claro" title="Modo oscuro">
+          🌙
+        </button>
+      </div>
     </div>
   </header>
 
@@ -43,10 +50,15 @@
       <h2 id="analizar-enlace" class="card-title">🔗 Analiza un enlace</h2>
       <div class="input-row">
         <label for="urlInput" class="sr-only">Ingresa la URL a analizar</label>
-        <input id="urlInput" type="url" placeholder="https://ejemplo.com/login?session=..." aria-describedby="urlHelp"
-          required />
-        <button id="analyzeBtn" type="button">Analizar</button>
-        <button id="reportBtnTop" class="outline" type="button">Reportar phishing</button>
+        <div style="position: relative; flex-grow: 1; display: flex; align-items: center; min-width: 300px;">
+          <input id="urlInput" type="url" placeholder="https://ejemplo.com/login?session=..." aria-describedby="urlHelp"
+            required style="width: 100%; padding-right: 45px; margin: 0; border-radius: 8px;" />
+          <button type="button" id="clearUrlBtn" aria-label="Borrar URL" title="Limpiar casilla"
+            style="position: absolute; right: 10px; background: transparent; color: var(--secondary-color); border: none; font-size: 16px; cursor: pointer; padding: 5px; opacity: 0.7; border-radius: 50%;">✖</button>
+        </div>
+        <button id="analyzeBtn" type="button" style="white-space: nowrap;">🔍 Analizar</button>
+        <button id="reportBtnTop" class="outline" type="button" style="white-space: nowrap;">🚩 Reportar
+          phishing</button>
       </div>
       <p id="urlHelp" class="sr-only">Ingresa una URL completa comenzando con http:// o https://</p>
 
@@ -56,7 +68,34 @@
           <div id="riskBadge" class="badge">Riesgo</div>
         </div>
 
-        <div class="risk-meter">
+        <!-- 1. Veredicto Principal (Lo más importante) -->
+        <div id="securityResult" class="security-result">
+        </div>
+
+        <!-- 2. Vista Previa (Contexto visual inmediato) -->
+        <div id="previewContainer" class="preview-container"
+          style="display: none; margin-bottom: 25px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); background: var(--card-bg);">
+          <div class="preview-header"
+            style="background: var(--mono-bg); padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color);">
+            <span style="font-size: 1.2rem;">📱</span>
+            <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Vista previa de la página</h4>
+          </div>
+          <div class="preview-body"
+            style="height: 400px; width: 100%; position: relative; background: var(--input-bg);">
+            <div id="previewLoading"
+              style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--secondary-color); font-weight: 500;">
+              ⏳ Generando vista previa...</div>
+            <img id="previewImage"
+              style="width: 100%; height: 100%; object-fit: cover; object-position: top; display: none; opacity: 0; transition: opacity 0.5s ease;"
+              alt="Vista previa">
+          </div>
+        </div>
+
+        <!-- 3. Consejos Educativos -->
+        <div id="tipsContainer" class="tips-container" aria-live="polite"></div>
+
+        <!-- 4. Puntuación y Medidor de Riesgo (Detalle técnico) -->
+        <div class="risk-meter" style="margin-top: 20px;">
           <div class="risk-labels">
             <span class="risk-label">Bajo riesgo</span>
             <span class="risk-label">Alto riesgo</span>
@@ -67,9 +106,7 @@
           <div class="risk-score" id="riskScore">Puntuación: -/10</div>
         </div>
 
-        <div id="securityResult" class="security-result">
-        </div>
-
+        <!-- 5. Detalles Profundos del Análisis -->
         <div class="analysis-details">
           <div class="details-actions">
             <button class="toggle-details" id="toggleDetails" aria-expanded="false">
@@ -131,7 +168,7 @@
     </section>
 
     <!-- Modal de URLs por categoría -->
-    <div id="urlsModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+    <div id="urlsModal" class="modal-overlay" hidden aria-modal="true" role="dialog" style="z-index: 4000;">
       <div class="modal-box">
         <div class="modal-header">
           <h3 id="modalTitle">URLs analizadas</h3>
@@ -143,19 +180,281 @@
       </div>
     </div>
 
+    <!-- Modal de Login de Admin -->
+    <div id="adminLoginModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+      <div
+        style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; max-width: 420px; gap: 25px;">
+
+        <!-- Logo Premium -->
+        <div
+          style="display: flex; align-items: center; gap: 12px; filter: drop-shadow(0 4px 15px rgba(96, 165, 250, 0.4));">
+          <span style="font-size: 3rem; line-height: 1;">🛡️</span>
+          <h2
+            style="margin: 0; font-size: 2.6rem; font-weight: 800; background: linear-gradient(135deg, #93c5fd, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; font-family: 'Segoe UI', Tahoma, sans-serif;">
+            PhishShield
+          </h2>
+        </div>
+
+        <!-- Modal Box Refinado -->
+        <div class="modal-box"
+          style="width: 100%; border: 1px solid var(--border-color); box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5); border-radius: 16px; overflow: hidden; background: var(--card-bg);">
+          <div class="modal-header"
+            style="background: rgba(0,0,0,0.05); border-bottom: 1px solid var(--border-color); padding: 20px 24px;">
+            <h3 style="font-size: 1.25rem; font-weight: 600;">Acceso Seguro</h3>
+            <button id="closeAdminLogin" class="modal-close" aria-label="Cerrar">×</button>
+          </div>
+
+          <div class="modal-body" style="padding: 30px 24px;">
+            <form id="adminLoginForm" style="display: flex; flex-direction: column; gap: 20px;">
+              <div style="position: relative;">
+                <span
+                  style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; opacity: 0.8; z-index: 10;">👤</span>
+                <input type="text" id="adminUsername" class="styled-input" placeholder="Usuario administrador" required
+                  style="width: 100%; padding-left: 48px; border-radius: 12px; height: 55px; background: var(--input-bg);">
+              </div>
+
+              <div style="position: relative;">
+                <span
+                  style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; opacity: 0.8; z-index: 10;">🔑</span>
+                <input type="password" id="adminPassword" class="styled-input" placeholder="Contraseña" required
+                  style="width: 100%; padding-left: 48px; border-radius: 12px; height: 55px; background: var(--input-bg);">
+              </div>
+
+              <button type="submit"
+                style="width: 100%; padding: 16px; font-size: 1.15rem; font-weight: bold; margin-top: 15px; border-radius: 12px; background: linear-gradient(135deg, var(--primary-color), #2563eb); border: none; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35); color: white; cursor: pointer; transition: all 0.3s ease;">
+                Ingresar al Panel
+              </button>
+            </form>
+            <div id="adminLoginError"
+              style="color: var(--danger-color); display: none; margin-top: 1.5rem; text-align: center; font-weight: bold; background: rgba(220, 53, 69, 0.1); padding: 12px; border-radius: 8px; border: 1px solid var(--danger-color);">
+              ❌ Credenciales incorrectas
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Dashboard de Admin (Full Dashboard Experience) -->
+    <div id="adminDashboardModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+      <div class="modal-box"
+        style="width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column; background: var(--background-color); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+
+        <!-- Header del Dashboard -->
+        <div class="modal-header"
+          style="background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 2rem;">📊</span>
+            <div>
+              <h3 style="margin: 0; font-size: 1.4rem;">Panel de Control Administrativo</h3>
+              <span style="font-size: 0.85rem; color: var(--secondary-color);">Gestión y monitoreo de amenazas en tiempo
+                real</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button id="refreshAdminBtn"
+              style="background: var(--primary-color); color: white; border-radius: 6px; padding: 10px 15px; font-size: 0.9rem;">🔄
+              Refrescar Datos</button>
+            <button id="showChangePasswordBtn"
+              style="background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 15px; font-size: 0.9rem;">🔑
+              Seguridad</button>
+            <button id="logoutAdminBtn"
+              style="background: rgba(220, 53, 69, 0.1); color: var(--danger-color); border: 1px solid var(--danger-color); border-radius: 6px; padding: 10px 15px; font-size: 0.9rem;">🚪
+              Salir</button>
+            <button id="closeAdminDashboard" class="modal-close" aria-label="Cerrar"
+              style="margin-left: 15px; background: none; border: none; color: var(--text-color); font-size: 1.5rem; cursor: pointer;">×</button>
+          </div>
+        </div>
+
+        <!-- Cuerpo del Dashboard -->
+        <div class="modal-body"
+          style="flex: 1; padding: 25px; background: var(--background-color); display: flex; flex-direction: column; overflow: hidden;">
+
+          <!-- Fila de Resumen (KPIs) -->
+          <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; flex-shrink: 0;">
+            <div class="stat-clickable" data-admin-filter="todas" title="Ver todas las URLs"
+              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
+              <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Total Analizado</span>
+              <span id="adminKpiTotal"
+                style="font-size: 2rem; font-weight: 800; color: var(--text-color); margin-top: 5px;">-</span>
+              <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
+            </div>
+            <div class="stat-clickable" data-admin-filter="alto" title="Ver URLs de riesgo alto"
+              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 4px solid var(--danger-color); display: flex; flex-direction: column;">
+              <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Amenazas
+                Detectadas</span>
+              <span id="adminKpiDanger"
+                style="font-size: 2rem; font-weight: 800; color: var(--danger-color); margin-top: 5px;">-</span>
+              <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
+            </div>
+            <div class="stat-clickable" data-admin-filter="bajo" title="Ver URLs de riesgo bajo"
+              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 4px solid var(--safe-color); display: flex; flex-direction: column;">
+              <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Sitios Seguros</span>
+              <span id="adminKpiSafe"
+                style="font-size: 2rem; font-weight: 800; color: var(--safe-text); margin-top: 5px;">-</span>
+              <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
+            </div>
+            <div class="stat-clickable" data-admin-filter="reportes" title="Ver reportes manuales"
+              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 4px solid var(--primary-color); display: flex; flex-direction: column;">
+              <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Reportes
+                Manuales</span>
+              <span id="adminKpiReports"
+                style="font-size: 2rem; font-weight: 800; color: var(--primary-color); margin-top: 5px;">-</span>
+              <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
+            </div>
+          </div>
+
+          <!-- Cuadrícula Principal (Gráficos y Tablas) -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px; flex: 1; min-height: 0;">
+
+            <!-- Panel Izquierdo: Tablas -->
+            <div
+              style="background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-height: 0;">
+              <div
+                style="padding: 12px 15px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <h4 style="margin: 0; font-size: 0.95rem;">Registro Histórico Global</h4>
+                <button id="exportCsvBtn"
+                  style="background: var(--primary-color); color: white; padding: 5px 10px; font-size: 0.75rem; border-radius: 4px; border: none; cursor: pointer;">📥
+                  Exportar CSV</button>
+              </div>
+              <div style="padding: 15px; overflow-y: auto; flex: 1;">
+                <table
+                  style="width: 100%; border-collapse: separate; border-spacing: 0 8px; text-align: left; font-size: 0.85rem;">
+                  <thead style="position: sticky; top: -10px; z-index: 10;">
+                    <tr style="background: var(--mono-bg);">
+                      <th
+                        style="padding: 12px 20px; font-weight: 600; color: var(--secondary-color); border-top-left-radius: 8px; border-bottom-left-radius: 8px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); border-left: 1px solid var(--border-color);">
+                        Estado</th>
+                      <th
+                        style="padding: 12px 20px; font-weight: 600; color: var(--secondary-color); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                        URL Analizada</th>
+                      <th
+                        style="padding: 12px 20px; font-weight: 600; color: var(--secondary-color); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                        Score</th>
+                      <th
+                        style="padding: 12px 20px; font-weight: 600; color: var(--secondary-color); border-top-right-radius: 8px; border-bottom-right-radius: 8px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+                        Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminHistoryList">
+                    <tr>
+                      <td colspan="4" style="padding: 20px; text-align: center;">Cargando...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Panel Derecho: Reportes y Gráficos -->
+            <div style="display: flex; flex-direction: column; gap: 20px; min-height: 0;">
+
+              <!-- Gráfico Donut de Estados -->
+              <div
+                style="background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color); overflow: hidden; padding: 15px; flex-shrink: 0;">
+                <h4 style="margin: 0 0 15px 0; font-size: 0.95rem;">Distribución de Riesgo</h4>
+                <div
+                  style="display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
+                  <div style="position: relative; width: 120px; height: 120px;">
+                    <!-- El conic-gradient se actualiza vía JS -->
+                    <div id="adminDonutChart"
+                      style="width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(#10b981 0%, #10b981 33%, #f59e0b 33%, #f59e0b 66%, #ef4444 66%, #ef4444 100%); transition: background 0.5s ease;">
+                    </div>
+                    <div
+                      style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; background: var(--card-bg); border-radius: 50%;">
+                    </div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; min-width: 100px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="width: 12px; height: 12px; border-radius: 3px; background: #10b981;"></span> Seguras
+                      <span id="donutSafe"
+                        style="color: var(--secondary-color); margin-left: auto; font-weight: 600;">0%</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="width: 12px; height: 12px; border-radius: 3px; background: #f59e0b;"></span> Medias
+                      <span id="donutWarn"
+                        style="color: var(--secondary-color); margin-left: auto; font-weight: 600;">0%</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="width: 12px; height: 12px; border-radius: 3px; background: #ef4444;"></span>
+                      Peligrosas <span id="donutDanger"
+                        style="color: var(--secondary-color); margin-left: auto; font-weight: 600;">0%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Alertas Comunitarias -->
+              <div
+                style="background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                <div
+                  style="padding: 12px 15px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                  <h4 style="margin: 0; font-size: 0.95rem;">Alertas Comunitarias</h4>
+                  <button id="exportJsonBtn"
+                    style="background: var(--safe-color); color: var(--safe-text); padding: 5px 10px; font-size: 0.75rem; border-radius: 4px; border: none; cursor: pointer;">📥
+                    JSON</button>
+                </div>
+                <div style="padding: 15px; overflow-y: auto; flex: 1;" id="adminReportsList">
+                  Cargando...
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para cambiar contraseña -->
+    <div id="adminChangePasswordModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+      <div class="modal-box" style="max-width: 400px;">
+        <div class="modal-header">
+          <h3>Cambiar Contraseña</h3>
+          <button id="closeChangePassword" class="modal-close" aria-label="Cerrar">×</button>
+        </div>
+        <div class="modal-body" style="padding: 20px 10px;">
+          <form id="changePasswordForm" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="password" id="cpOldPassword" class="styled-input" placeholder="Contraseña Actual" required>
+            <input type="password" id="cpNewPassword" class="styled-input" minlength="8"
+              placeholder="Nueva Contraseña (mín 8 carac.)" required>
+            <div id="passwordRequirements"
+              style="font-size: 0.85rem; color: var(--secondary-color); margin-top: -10px; margin-bottom: 5px; padding-left: 5px; display: flex; flex-direction: column; gap: 4px;">
+              <div id="reqLength" class="req-item">❌ Mínimo 8 caracteres</div>
+              <div id="reqUpper" class="req-item">❌ Mínimo una letra mayúscula</div>
+              <div id="reqNumber" class="req-item">❌ Mínimo un número</div>
+              <div id="reqSpecial" class="req-item">❌ Mínimo un carácter especial (@$!%*?&#...)</div>
+            </div>
+            <input type="password" id="cpConfirmPassword" class="styled-input" minlength="8"
+              placeholder="Confirmar Nueva Contraseña" required>
+            <button type="submit" style="width: 100%; padding: 15px; font-size: 1.1rem; margin-top: 10px;">Actualizar
+              Contraseña</button>
+          </form>
+          <div id="changePasswordError"
+            style="color: var(--danger-color); display: none; margin-top: 1rem; text-align: center; font-weight: bold;">
+          </div>
+        </div>
+      </div>
+    </div>
 
 
-    <section class="card">
-      <h3>Prueba con URLs seguras de ejemplo</h3>
-      <div class="chips">
-        <button class="chip" data-demo="https://www.bancolombia.com/personas/beneficios/tarjeta-debito">banco
-          (typo)</button>
-        <button class="chip" data-demo="https://www.shein.com.co/user/auth/login?direction=nav">shein promo</button>
-        <button class="chip"
-          data-demo="https://www.temu.com/co/attendance/co-blackfriday25-p1-52385-1-a-psurl.html">acortador</button>
-        <button class="chip" data-demo="https://envios-gratis-temu.com/redirect?to=login">redirect</button>
-        <button class="chip" data-demo="http://192.168.1.1/login">IP directa</button>
-        <button class="chip" data-demo="https://secure-bancolombia-login.com/verificar">typosquatting</button>
+
+    <section class="card testing-zone">
+      <h3 style="display:flex; align-items:center; gap: 8px; color: var(--primary-color);">🧪 Zona de Pruebas Rápidas
+      </h3>
+      <p style="margin-bottom: 15px; color: var(--secondary-color); font-size: 0.95rem;">Selecciona un escenario
+        interactivo para probar el analizador y ver las nuevas Tarjetas Educativas:</p>
+      <div class="demo-grid">
+        <button class="demo-btn safe-test" data-demo="https://www.bancolombia.com/personas/beneficios/tarjeta-debito">🏦
+          Banco Genuino</button>
+        <button class="demo-btn safe-test" data-demo="https://www.shein.com.co/user/auth/login?direction=nav">🛍️ Tienda
+          Operativa</button>
+        <button class="demo-btn suspicious-test" data-demo="https://login.bancolombia.verificacion.secure.com/">🔗
+          Sub-dominios Múltiples</button>
+        <button class="demo-btn suspicious-test" data-demo="https://envios-gratis-hoy-ofertas.com/login?password=abc">🔄
+          Guiones y Parámetros Sensibles</button>
+        <button class="demo-btn danger-test" data-demo="http://192.168.1.1/login">📟 IP Directa</button>
+        <button class="demo-btn danger-test" data-demo="https://secure-bancolombia-login.com/verificar">👀 Typosquatting
+          (Falso)</button>
       </div>
     </section>
 
@@ -166,6 +465,7 @@
     import { UIManager } from './client/uiManager.js';
     import { ApiClient } from './client/apiClient.js';
     import { StorageManager } from './client/storage.js';
+    import { AdminManager } from './client/adminManager.js';
 
     // Dark mode: restaurar preferencia guardada
     const savedTheme = localStorage.getItem('phishshield-theme');
@@ -177,7 +477,8 @@
       const uiManager = new UIManager();
       const apiClient = new ApiClient();
       const storageManager = new StorageManager();
-      const app = new PhishShieldApp(uiManager, apiClient, storageManager);
+      const adminManager = new AdminManager(apiClient, uiManager);
+      const app = new PhishShieldApp(uiManager, apiClient, storageManager, adminManager);
 
       // ── Dark mode toggle ──────────────────────────────────
       const darkToggle = document.getElementById('darkToggle');
@@ -349,8 +650,8 @@
         document.body.style.overflow = '';
       }
 
-      // Clic en cards
-      document.querySelectorAll('.stat-clickable').forEach(card => {
+      // Clic en cards del panel público
+      document.querySelectorAll('.stats-grid .stat-clickable').forEach(card => {
         card.addEventListener('click', () => abrirModalCategoria(card.dataset.filter));
       });
 
@@ -358,6 +659,15 @@
       closeModal.addEventListener('click', cerrarModal);
       modal.addEventListener('click', e => { if (e.target === modal) cerrarModal(); });
       document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+
+      // Limpiar entrada de URL
+      document.getElementById('clearUrlBtn')?.addEventListener('click', () => {
+        const input = document.getElementById('urlInput');
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+      });
     });
   </script>
 

@@ -1,7 +1,10 @@
+import { TipsEngine } from './tipsEngine.js';
+
 class UIManager {
   constructor() {
     this.elements = this.cacheElements();
     this._toggleHandler = null; // Referencia persistente para poder removerla
+    this.tipsEngine = new TipsEngine();
   }
 
   cacheElements() {
@@ -42,7 +45,7 @@ class UIManager {
       btn.textContent = "🔍 Analizando...";
       btn.disabled = true;
     } else {
-      btn.textContent = "Analizar";
+      btn.textContent = "🔍 Analizar";
       btn.disabled = false;
     }
   }
@@ -54,10 +57,72 @@ class UIManager {
     this.updateRiskMeter(analysisResult.puntuacion, analysisResult.riesgo);
     this.updateSecurityResult(analysisResult.riesgo, analysisResult.indicadores);
     this.updateAnalysisDetails(url, analysisResult);
+    this.displayTips(analysisResult);
+    this.displayPreview(url);
+  }
+
+  displayPreview(url) {
+    const previewContainer = document.getElementById("previewContainer");
+    const previewImage = document.getElementById("previewImage");
+    const previewLoading = document.getElementById("previewLoading");
+    
+    if (!previewContainer || !previewImage) return;
+    
+    // Solo mostrar si es una URL http/https válida
+    if (!url.startsWith('http')) {
+      previewContainer.style.display = "none";
+      return;
+    }
+    
+    previewContainer.style.display = "block";
+    previewImage.style.display = "none";
+    if (previewLoading) {
+      previewLoading.textContent = "⏳ Generando vista previa de la página...";
+      previewLoading.style.display = "flex";
+    }
+    
+    // Utilizamos Microlink.io con un tiempo de espera (waitFor) para permitir que páginas pesadas (React/Angular) carguen su contenido
+    const previewUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url&waitFor=3000`;
+    
+    previewImage.onload = () => {
+      if (previewLoading) previewLoading.style.display = "none";
+      previewImage.style.display = "block";
+      // Añadir un pequeño retraso para que la transición CSS funcione
+      setTimeout(() => {
+        previewImage.style.opacity = "1";
+      }, 50);
+    };
+    
+    previewImage.onerror = () => {
+      if (previewLoading) previewLoading.textContent = "❌ No se pudo cargar la vista previa (Sitio no disponible o protegido)";
+    };
+    
+    previewImage.src = previewUrl;
+  }
+
+  displayTips(analysisResult) {
+    const tipsContainer = document.getElementById("tipsContainer");
+    if (!tipsContainer) return;
+    
+    tipsContainer.innerHTML = ''; // Limpiar anteriores
+    
+    const tips = this.tipsEngine.generateTips(analysisResult);
+    if (tips.length > 0) {
+      tipsContainer.innerHTML = tips.map((tip, index) => `
+        <div class="tip-card ${tip.type}" style="animation-delay: ${index * 0.15}s;">
+          <div class="tip-title">${tip.title}</div>
+          <div class="tip-text">${tip.text}</div>
+        </div>
+      `).join('');
+    }
   }
 
   showResultSection() {
     this.elements.result.hidden = false;
+    // Reiniciar y aplicar animación de entrada
+    this.elements.result.classList.remove('animate__animated', 'animate__fadeInUp', 'animate__faster');
+    void this.elements.result.offsetWidth; // Reflow
+    this.elements.result.classList.add('animate__animated', 'animate__fadeInUp', 'animate__faster');
   }
 
   updateUrlOutput(url) {
@@ -155,10 +220,14 @@ class UIManager {
         this.elements.detailsContent.setAttribute("aria-hidden", "false");
         this.elements.toggleDetails.setAttribute("aria-expanded", "true");
         toggleText.textContent = "Ocultar análisis detallado";
+        this.elements.detailsContent.classList.remove('animate__animated', 'animate__fadeIn', 'animate__faster');
+        void this.elements.detailsContent.offsetWidth;
+        this.elements.detailsContent.classList.add('animate__animated', 'animate__fadeIn', 'animate__faster');
       } else {
         this.elements.detailsContent.setAttribute("aria-hidden", "true");
         this.elements.toggleDetails.setAttribute("aria-expanded", "false");
         toggleText.textContent = "Ver análisis detallado";
+        this.elements.detailsContent.classList.remove('animate__animated', 'animate__fadeIn', 'animate__faster');
       }
     };
 

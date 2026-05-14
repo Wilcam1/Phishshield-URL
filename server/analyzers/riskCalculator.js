@@ -4,6 +4,11 @@ class RiskCalculator {
     const factores = [];
 
     // Factores de alto riesgo
+    if (verificacionesExternas.includes('reportado_manualmente')) {
+      puntuacion += 10;
+      factores.push('Reportado manualmente como Phishing (+10)');
+    }
+
     if (verificacionesExternas.includes('phishtank_confirmado')) {
       puntuacion += 10;
       factores.push('Confirmado en PhishTank (+10)');
