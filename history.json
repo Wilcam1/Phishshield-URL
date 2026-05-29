@@ -1,5 +1,31 @@
 [
   {
+    "url": "https://www.bancolombia.com/personas/beneficios/tarjeta-debito",
+    "riesgo": "alto",
+    "indicadores": [],
+    "puntuacion": 7,
+    "caracteristicas_tecnicas": {
+      "dominio": "www.bancolombia.com",
+      "protocolo": "https",
+      "subdominios": 1,
+      "esHTTPS": true,
+      "puerto": "443",
+      "longitudRuta": 35,
+      "numeroParametros": 0,
+      "parametrosSensibles": [],
+      "tieneGuionesMultiples": false,
+      "tieneNumerosEnDominio": false,
+      "esIP": false,
+      "longitudTotal": 62
+    },
+    "factores_puntuacion": [
+      "Reportado manualmente como Phishing (+10)",
+      "Verificado en Safe Browsing (-1)",
+      "Verificado limpio por VirusTotal (-2)"
+    ],
+    "timestamp": "2026-05-29T23:20:20.510Z"
+  },
+  {
     "url": "https://www.shein.com.co/user/auth/login?direction=nav",
     "riesgo": "bajo",
     "indicadores": [],

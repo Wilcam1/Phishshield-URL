@@ -1,5 +1,5 @@
 class ApiClient {
-  constructor(baseURL = 'http://localhost:3000') {
+  constructor(baseURL = window.location.origin) {
     this.baseURL = baseURL;
   }
 
