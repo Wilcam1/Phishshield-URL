@@ -14,3 +14,9 @@ npm-debug.log*
 # Editor
 .vscode/
 .idea/
+
+# Archivos de datos generados en runtime
+cache.json
+history.json
+reports.json
+
