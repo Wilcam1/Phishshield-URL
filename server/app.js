@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import puppeteer from 'puppeteer';
 
 // Importar los módulos refactorizados
 import UrlAnalyzer from './analyzers/urlAnalyzer.js';
@@ -15,6 +16,7 @@ import ReportRepository from './repositories/reportRepository.js';
 import HistoryRepository from './repositories/historyRepository.js';
 import VirusTotalService from './services/virusTotalService.js';
 import AnalysisCache from './services/cacheService.js';
+import MlService from './services/mlService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +36,7 @@ class PhishShieldServer {
     this.reportRepository = new ReportRepository();
     this.historyRepository = new HistoryRepository();
     this.cache = new AnalysisCache();
+    this.mlService = new MlService();
 
     // Sesiones de admin
     this.activeTokens = new Set();
@@ -55,6 +58,7 @@ class PhishShieldServer {
     this.app.get('/estadisticas', (req, res) => this.getStats(req, res));
     this.app.get('/historial', (req, res) => this.getHistory(req, res));
     this.app.get('/health', (req, res) => this.healthCheck(req, res));
+    this.app.get('/api/screenshot', (req, res) => this.generateLocalScreenshot(req, res));
 
     // Ruta para servir el archivo HTML principal
     this.app.get('/', (req, res) => {
@@ -202,10 +206,11 @@ class PhishShieldServer {
         verificacionesExternas.push('reportado_manualmente');
       }
 
-      const [phishTankRes, safeBrowsingRes, virusTotalRes] = await Promise.allSettled([
+      const [phishTankRes, safeBrowsingRes, virusTotalRes, mlRes] = await Promise.allSettled([
         this.phishTankService.verificar(url),
         this.safeBrowsingService.verificar(url),
-        this.virusTotalService.verificar(url)
+        this.virusTotalService.verificar(url),
+        this.mlService.predecirRiesgo(url)
       ]);
 
       if (phishTankRes.status === 'fulfilled' && phishTankRes.value) {
@@ -218,6 +223,8 @@ class PhishShieldServer {
         verificacionesExternas.push(virusTotalRes.value);
       }
 
+      const mlResult = mlRes.status === 'fulfilled' && mlRes.value ? mlRes.value : null;
+
       // 4. Reunir indicadores
       const indicadores = [
         ...typosquatting.indicadores,
@@ -228,7 +235,8 @@ class PhishShieldServer {
       const { puntuacion, factores } = this.riskCalculator.calcular(
         indicadores,
         caracteristicas,
-        verificacionesExternas
+        verificacionesExternas,
+        mlResult
       );
 
       const riesgo = this.riskCalculator.determinarRiesgo(puntuacion);
@@ -238,6 +246,7 @@ class PhishShieldServer {
         riesgo,
         indicadores,
         puntuacion,
+        probabilidad_ml: mlResult ? mlResult.probability : null,
         caracteristicas_tecnicas: caracteristicas,
         factores_puntuacion: factores,
         timestamp: new Date().toISOString()
@@ -337,6 +346,50 @@ class PhishShieldServer {
       version: '2.0.0',
       timestamp: new Date().toISOString()
     });
+  }
+
+  async generateLocalScreenshot(req, res) {
+    let browser;
+    try {
+      const { url } = req.query;
+      if (!url) {
+        return res.status(400).send('URL requerida');
+      }
+
+      const targetUrl = url.startsWith('http') ? url : `https://${url}`;
+      console.log(`📸 Generando captura local para: ${targetUrl}...`);
+
+      browser = await puppeteer.launch({
+        headless: 'new',
+        args: [
+          '--disable-blink-features=AutomationControlled'
+        ]
+      });
+
+      const page = await browser.newPage();
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36');
+      await page.setViewport({ width: 1280, height: 800 });
+
+      // Cargar la página
+      await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 15000 });
+
+      // Esperar 2 segundos adicionales
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const screenshotBuffer = await page.screenshot({ type: 'png' });
+      
+      res.set('Content-Type', 'image/png');
+      res.send(screenshotBuffer);
+      console.log(`✅ Captura de pantalla generada con exito para: ${targetUrl}`);
+
+    } catch (error) {
+      console.error(`❌ Error al generar captura local para ${req.query.url}:`, error.message);
+      res.status(500).send('No se pudo generar la vista previa local.');
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
   }
 
   start() {

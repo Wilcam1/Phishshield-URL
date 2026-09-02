@@ -81,8 +81,8 @@ class UIManager {
       previewLoading.style.display = "flex";
     }
     
-    // Utilizamos Microlink.io con un tiempo de espera (waitFor) para permitir que páginas pesadas (React/Angular) carguen su contenido
-    const previewUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url&waitFor=3000`;
+    // Utilizamos el endpoint de emulación de navegador local (Puppeteer)
+    const previewUrl = `/api/screenshot?url=${encodeURIComponent(url)}`;
     
     previewImage.onload = () => {
       if (previewLoading) previewLoading.style.display = "none";

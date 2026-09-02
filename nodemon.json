@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    "cache.json",
+    "history.json",
+    "reports.json",
+    "test-analysis.js",
+    "server/ml_service/*",
+    "server/ml_service/**/*"
+  ]
+}
