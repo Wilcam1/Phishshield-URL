@@ -28,7 +28,7 @@
   <header class="container" role="banner">
     <div class="header-row">
       <div>
-        <h1>🛡️ PhishShield — Verificador de URLs</h1>
+        <h1><span class="shield-logo-glow">🛡️</span> PhishShield — Verificador de URLs</h1>
         <p class="subtitle">
           Proyecto para detectar fraudes que roban datos bancarios por correo con páginas falsas.
           Pega un enlace sospechoso y obtén una evaluación rápida basada en heurísticas.
@@ -94,7 +94,41 @@
           </div>
         </div>
 
-        <!-- 3. Consejos Educativos -->
+        <!-- 3. Asistente Educativo con Inteligencia Artificial y Micro-Quiz -->
+        <div id="aiAssistantContainer" style="display: none; margin: 20px 0;">
+          <!-- Tarjeta del Asistente IA -->
+          <div class="ai-assistant-card" id="aiAssistantCard">
+            <div class="ai-assistant-header">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="ai-badge-icon">🤖</span>
+                <div>
+                  <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-color);">Asistente Educativo IA</h4>
+                  <span id="aiAssistantSource" style="font-size: 0.75rem; color: var(--secondary-color);">PhishShield AI Engine</span>
+                </div>
+              </div>
+              <span class="ai-live-tag">✨ Explicación Generada</span>
+            </div>
+            <div class="ai-assistant-body" id="aiExplanationBody" style="padding: 15px; font-size: 0.95rem; line-height: 1.5; color: var(--text-color);">
+            </div>
+            <div id="aiRecommendationBox" style="margin: 0 15px 15px; padding: 12px 14px; background: var(--mono-bg); border-left: 4px solid var(--primary-color); border-radius: 6px; font-size: 0.9rem;">
+            </div>
+          </div>
+
+          <!-- Micro-Quiz Interactivo -->
+          <div class="micro-quiz-card" id="microQuizCard" style="display: none; margin-top: 15px;">
+            <div class="quiz-header">
+              <span style="font-size: 1.2rem;">🎯</span>
+              <h4 style="margin: 0; font-size: 1rem;">Micro-Entrenamiento (Quiz de 30 segundos)</h4>
+            </div>
+            <div style="padding: 15px;">
+              <p id="quizQuestion" style="font-weight: 600; margin-bottom: 12px; font-size: 0.95rem;"></p>
+              <div id="quizOptions" style="display: flex; flex-direction: column; gap: 8px;"></div>
+              <div id="quizFeedback" style="display: none; margin-top: 12px; padding: 12px; border-radius: 8px; font-size: 0.9rem; line-height: 1.4;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Consejos Educativos Rápidos -->
         <div id="tipsContainer" class="tips-container" aria-live="polite"></div>
 
         <!-- 4. Puntuación y Medidor de Riesgo (Detalle técnico) -->
@@ -184,7 +218,7 @@
     </div>
 
     <!-- Modal de Login de Admin -->
-    <div id="adminLoginModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+    <div id="adminLoginModal" class="modal-overlay" hidden aria-modal="true" role="dialog" style="z-index: 4500;">
       <div
         style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; max-width: 420px; gap: 25px;">
 
@@ -238,9 +272,9 @@
     </div>
 
     <!-- Modal de Dashboard de Admin (Full Dashboard Experience) -->
-    <div id="adminDashboardModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+    <div id="adminDashboardModal" class="modal-overlay" hidden aria-modal="true" role="dialog" style="padding: 10px; z-index: 3500;">
       <div class="modal-box"
-        style="width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column; background: var(--background-color); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+        style="width: 98vw; max-width: 98vw; height: 96vh; max-height: 96vh; display: flex; flex-direction: column; background: var(--background-color); border: 1px solid var(--border-color); border-radius: 14px; overflow: hidden; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);">
 
         <!-- Header del Dashboard -->
         <div class="modal-header"
@@ -270,45 +304,45 @@
 
         <!-- Cuerpo del Dashboard -->
         <div class="modal-body"
-          style="flex: 1; padding: 25px; background: var(--background-color); display: flex; flex-direction: column; overflow: hidden;">
+          style="flex: 1; padding: 20px; background: var(--background-color); display: flex; flex-direction: column; overflow: hidden;">
 
           <!-- Fila de Resumen (KPIs) -->
           <div
-            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; flex-shrink: 0;">
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; flex-shrink: 0;">
             <div class="stat-clickable" data-admin-filter="todas" title="Ver todas las URLs"
-              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
+              style="background: var(--card-bg); padding: 18px 20px; border-radius: 10px; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
               <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Total Analizado</span>
               <span id="adminKpiTotal"
-                style="font-size: 2rem; font-weight: 800; color: var(--text-color); margin-top: 5px;">-</span>
+                style="font-size: 2.2rem; font-weight: 800; color: var(--text-color); margin-top: 5px;">-</span>
               <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
             </div>
             <div class="stat-clickable" data-admin-filter="alto" title="Ver URLs de riesgo alto"
-              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 4px solid var(--danger-color); display: flex; flex-direction: column;">
+              style="background: var(--card-bg); padding: 18px 20px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 5px solid var(--danger-color); display: flex; flex-direction: column;">
               <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Amenazas
                 Detectadas</span>
               <span id="adminKpiDanger"
-                style="font-size: 2rem; font-weight: 800; color: var(--danger-color); margin-top: 5px;">-</span>
+                style="font-size: 2.2rem; font-weight: 800; color: var(--danger-color); margin-top: 5px;">-</span>
               <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
             </div>
             <div class="stat-clickable" data-admin-filter="bajo" title="Ver URLs de riesgo bajo"
-              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 4px solid var(--safe-color); display: flex; flex-direction: column;">
+              style="background: var(--card-bg); padding: 18px 20px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 5px solid var(--safe-color); display: flex; flex-direction: column;">
               <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Sitios Seguros</span>
               <span id="adminKpiSafe"
-                style="font-size: 2rem; font-weight: 800; color: var(--safe-text); margin-top: 5px;">-</span>
+                style="font-size: 2.2rem; font-weight: 800; color: var(--safe-text); margin-top: 5px;">-</span>
               <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
             </div>
             <div class="stat-clickable" data-admin-filter="reportes" title="Ver reportes manuales"
-              style="background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 4px solid var(--primary-color); display: flex; flex-direction: column;">
+              style="background: var(--card-bg); padding: 18px 20px; border-radius: 10px; border: 1px solid var(--border-color); border-left: 5px solid var(--primary-color); display: flex; flex-direction: column;">
               <span style="color: var(--secondary-color); font-size: 0.85rem; font-weight: 600;">Reportes
                 Manuales</span>
               <span id="adminKpiReports"
-                style="font-size: 2rem; font-weight: 800; color: var(--primary-color); margin-top: 5px;">-</span>
+                style="font-size: 2.2rem; font-weight: 800; color: var(--primary-color); margin-top: 5px;">-</span>
               <span class="stat-hint" style="position: absolute; right: 15px; bottom: 15px;">👁️ ver</span>
             </div>
           </div>
 
           <!-- Cuadrícula Principal (Gráficos y Tablas) -->
-          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px; flex: 1; min-height: 0;">
+          <div style="display: grid; grid-template-columns: 2.2fr 1fr; gap: 20px; flex: 1; min-height: 0;">
 
             <!-- Panel Izquierdo: Tablas -->
             <div
@@ -409,7 +443,7 @@
     </div>
 
     <!-- Modal para cambiar contraseña -->
-    <div id="adminChangePasswordModal" class="modal-overlay" hidden aria-modal="true" role="dialog">
+    <div id="adminChangePasswordModal" class="modal-overlay" hidden aria-modal="true" role="dialog" style="z-index: 5000;">
       <div class="modal-box" style="max-width: 400px;">
         <div class="modal-header">
           <h3>Cambiar Contraseña</h3>

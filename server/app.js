@@ -10,6 +10,8 @@ import puppeteer from 'puppeteer';
 import UrlAnalyzer from './analyzers/urlAnalyzer.js';
 import TyposquattingDetector from './analyzers/typosquattingDetector.js';
 import RiskCalculator from './analyzers/riskCalculator.js';
+import SslInspector from './analyzers/sslInspector.js';
+import DomInspector from './analyzers/domInspector.js';
 import PhishTankService from './services/phishTankService.js';
 import SafeBrowsingService from './services/safeBrowsingService.js';
 import ReportRepository from './repositories/reportRepository.js';
@@ -17,6 +19,7 @@ import HistoryRepository from './repositories/historyRepository.js';
 import VirusTotalService from './services/virusTotalService.js';
 import AnalysisCache from './services/cacheService.js';
 import MlService from './services/mlService.js';
+import AiExplanationService from './services/aiExplanationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +33,8 @@ class PhishShieldServer {
     this.urlAnalyzer = new UrlAnalyzer();
     this.typosquattingDetector = new TyposquattingDetector();
     this.riskCalculator = new RiskCalculator();
+    this.sslInspector = new SslInspector();
+    this.domInspector = new DomInspector();
     this.phishTankService = new PhishTankService();
     this.safeBrowsingService = new SafeBrowsingService();
     this.virusTotalService = new VirusTotalService();
@@ -37,6 +42,7 @@ class PhishShieldServer {
     this.historyRepository = new HistoryRepository();
     this.cache = new AnalysisCache();
     this.mlService = new MlService();
+    this.aiExplanationService = new AiExplanationService();
 
     // Sesiones de admin
     this.activeTokens = new Set();
@@ -197,7 +203,7 @@ class PhishShieldServer {
       // 2. Detección de typosquatting
       const typosquatting = this.typosquattingDetector.detectar(caracteristicas.dominio);
 
-      // 3. Verificaciones externas en paralelo (PhishTank + Safe Browsing + VirusTotal)
+      // 3. Verificaciones externas e inspección profunda en paralelo
       const verificacionesExternas = [];
 
       // Validar si el dominio ya fue reportado manualmente por un usuario
@@ -206,11 +212,18 @@ class PhishShieldServer {
         verificacionesExternas.push('reportado_manualmente');
       }
 
-      const [phishTankRes, safeBrowsingRes, virusTotalRes, mlRes] = await Promise.allSettled([
+      const sld = caracteristicas.dominio || '';
+      const esOficial = this.typosquattingDetector.marcasLegitimas.some(m => 
+        m.dominios.some(dom => caracteristicas.dominio === dom || caracteristicas.dominio.endsWith('.' + dom))
+      );
+
+      const [phishTankRes, safeBrowsingRes, virusTotalRes, mlRes, sslRes, domRes] = await Promise.allSettled([
         this.phishTankService.verificar(url),
         this.safeBrowsingService.verificar(url),
         this.virusTotalService.verificar(url),
-        this.mlService.predecirRiesgo(url)
+        this.mlService.predecirRiesgo(url),
+        this.sslInspector.inspeccionar(url),
+        this.domInspector.inspeccionar(url, sld, esOficial)
       ]);
 
       if (phishTankRes.status === 'fulfilled' && phishTankRes.value) {
@@ -224,11 +237,15 @@ class PhishShieldServer {
       }
 
       const mlResult = mlRes.status === 'fulfilled' && mlRes.value ? mlRes.value : null;
+      const sslResult = sslRes.status === 'fulfilled' && sslRes.value ? sslRes.value : null;
+      const domResult = domRes.status === 'fulfilled' && domRes.value ? domRes.value : null;
 
-      // 4. Reunir indicadores
+      // 4. Reunir indicadores completos
       const indicadores = [
         ...typosquatting.indicadores,
-        ...this.getTechnicalIndicators(caracteristicas)
+        ...this.getTechnicalIndicators(caracteristicas),
+        ...(sslResult && sslResult.indicadores ? sslResult.indicadores : []),
+        ...(domResult && domResult.indicadores ? domResult.indicadores : [])
       ];
 
       // 5. Calcular riesgo
@@ -236,10 +253,24 @@ class PhishShieldServer {
         indicadores,
         caracteristicas,
         verificacionesExternas,
-        mlResult
+        mlResult,
+        sslResult,
+        domResult
       );
 
       const riesgo = this.riskCalculator.determinarRiesgo(puntuacion);
+
+      // 6. Generar Explicación y Quiz Adaptativo con IA
+      const asistenteIA = await this.aiExplanationService.generarExplicacionYQuiz({
+        url,
+        riesgo,
+        puntuacion,
+        probabilidad_ml: mlResult ? mlResult.probability : null,
+        inspeccion_ssl: sslResult,
+        inspeccion_dom: domResult,
+        caracteristicas_tecnicas: caracteristicas,
+        indicadores
+      });
 
       const resultado = {
         url,
@@ -247,6 +278,9 @@ class PhishShieldServer {
         indicadores,
         puntuacion,
         probabilidad_ml: mlResult ? mlResult.probability : null,
+        inspeccion_ssl: sslResult,
+        inspeccion_dom: domResult,
+        asistente_ia: asistenteIA,
         caracteristicas_tecnicas: caracteristicas,
         factores_puntuacion: factores,
         timestamp: new Date().toISOString()

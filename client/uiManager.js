@@ -41,12 +41,15 @@ class UIManager {
 
   setLoadingState(loading) {
     const btn = this.elements.analyzeBtn;
+    const inputWrapper = this.elements.urlInput ? this.elements.urlInput.parentElement : null;
     if (loading) {
       btn.textContent = "🔍 Analizando...";
       btn.disabled = true;
+      if (inputWrapper) inputWrapper.classList.add("input-scanning");
     } else {
       btn.textContent = "🔍 Analizar";
       btn.disabled = false;
+      if (inputWrapper) inputWrapper.classList.remove("input-scanning");
     }
   }
 
@@ -57,6 +60,7 @@ class UIManager {
     this.updateRiskMeter(analysisResult.puntuacion, analysisResult.riesgo);
     this.updateSecurityResult(analysisResult.riesgo, analysisResult.indicadores);
     this.updateAnalysisDetails(url, analysisResult);
+    this.displayAiAssistant(analysisResult.asistente_ia);
     this.displayTips(analysisResult);
     this.displayPreview(url);
   }
@@ -98,6 +102,91 @@ class UIManager {
     };
     
     previewImage.src = previewUrl;
+  }
+
+  displayAiAssistant(aiData) {
+    const container = document.getElementById("aiAssistantContainer");
+    const sourceEl = document.getElementById("aiAssistantSource");
+    const bodyEl = document.getElementById("aiExplanationBody");
+    const recoBox = document.getElementById("aiRecommendationBox");
+    const quizCard = document.getElementById("microQuizCard");
+    const quizQuestion = document.getElementById("quizQuestion");
+    const quizOptions = document.getElementById("quizOptions");
+    const quizFeedback = document.getElementById("quizFeedback");
+
+    if (!container) return;
+
+    if (!aiData) {
+      container.style.display = "none";
+      return;
+    }
+
+    container.style.display = "block";
+
+    // 1. Configurar Fuente y Explicación
+    if (sourceEl) sourceEl.textContent = aiData.fuente || "PhishShield AI Engine";
+    
+    // Formatear markdown básico a HTML
+    let formattedText = (aiData.resumen_ia || "")
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+    if (bodyEl) bodyEl.innerHTML = formattedText;
+
+    if (recoBox) {
+      recoBox.innerHTML = `<strong>💡 Acción recomendada:</strong> ${aiData.recomendacion_ia || 'Proceder con precaución.'}`;
+    }
+
+    // 2. Configurar Micro-Quiz
+    if (aiData.quiz_interactivo && aiData.quiz_interactivo.pregunta) {
+      const quiz = aiData.quiz_interactivo;
+      quizCard.style.display = "block";
+      quizQuestion.textContent = quiz.pregunta;
+      quizFeedback.style.display = "none";
+      quizFeedback.className = "";
+      quizFeedback.innerHTML = "";
+
+      quizOptions.innerHTML = quiz.opciones.map((opc, idx) => `
+        <button class="quiz-option-btn" data-opt-index="${idx}">
+          <span style="font-weight: bold; width: 22px;">${String.fromCharCode(65 + idx)})</span>
+          <span>${opc}</span>
+        </button>
+      `).join('');
+
+      // Event listener interactivo para las opciones del quiz
+      const buttons = quizOptions.querySelectorAll(".quiz-option-btn");
+      buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const selectedIdx = parseInt(btn.dataset.optIndex, 10);
+          const isCorrect = selectedIdx === quiz.respuesta_correcta;
+
+          // Deshabilitar botones para fijar la respuesta
+          buttons.forEach(b => b.disabled = true);
+
+          if (isCorrect) {
+            btn.classList.add("correct");
+            quizFeedback.style.display = "block";
+            quizFeedback.style.background = "rgba(16, 185, 129, 0.15)";
+            quizFeedback.style.border = "1px solid #10b981";
+            quizFeedback.style.color = "var(--text-color)";
+            quizFeedback.innerHTML = `<strong>🎉 ¡Respuesta Correcta!</strong><br>${quiz.explicacion}`;
+          } else {
+            btn.classList.add("incorrect");
+            // Resaltar la respuesta correcta para educar al usuario
+            const correctBtn = quizOptions.querySelector(`[data-opt-index="${quiz.respuesta_correcta}"]`);
+            if (correctBtn) correctBtn.classList.add("correct");
+
+            quizFeedback.style.display = "block";
+            quizFeedback.style.background = "rgba(239, 68, 68, 0.15)";
+            quizFeedback.style.border = "1px solid #ef4444";
+            quizFeedback.style.color = "var(--text-color)";
+            quizFeedback.innerHTML = `<strong>❌ Respuesta Incorrecta.</strong><br>${quiz.explicacion}`;
+          }
+        });
+      });
+    } else {
+      quizCard.style.display = "none";
+    }
   }
 
   displayTips(analysisResult) {
@@ -254,9 +343,57 @@ class UIManager {
       { label: "Longitud de URL", valor: url.length > 50 ? "Larga" : "Normal", estado: url.length > 50 ? "warning" : "safe" },
       { label: "Caracteres especiales", valor: (url.match(/[^a-zA-Z0-9.:/]/g) || []).length, estado: "safe" },
       { label: "Nivel de riesgo", valor: analysisResult.riesgo.toUpperCase(), estado: analysisResult.riesgo === "alto" ? "danger" : analysisResult.riesgo === "medio" ? "warning" : "safe" },
-      { label: "Puntuación heurística", valor: `${analysisResult.puntuacion}/10`, estado: analysisResult.puntuacion <= 3 ? "safe" : analysisResult.puntuacion <= 7 ? "warning" : "danger" },
-      { label: "Indicadores encontrados", valor: analysisResult.indicadores.length, estado: analysisResult.indicadores.length === 0 ? "safe" : analysisResult.indicadores.length <= 2 ? "warning" : "danger" }
+      { label: "Puntuación de Riesgo", valor: `${analysisResult.puntuacion}/10`, estado: analysisResult.puntuacion <= 3 ? "safe" : analysisResult.puntuacion <= 7 ? "warning" : "danger" },
+      { label: "Probabilidad IA (ML)", valor: analysisResult.probabilidad_ml !== null && analysisResult.probabilidad_ml !== undefined ? `${(analysisResult.probabilidad_ml * 100).toFixed(1)}%` : "N/A", estado: analysisResult.probabilidad_ml > 0.5 ? "danger" : "safe" }
     ];
+
+    // Agregar datos de Inspección SSL/TLS
+    if (analysisResult.inspeccion_ssl) {
+      const ssl = analysisResult.inspeccion_ssl;
+      if (ssl.tieneSsl) {
+        detalles.push({
+          label: "🔒 Certificado SSL",
+          valor: ssl.esAutofirmado ? "Autofirmado" : ssl.autorizado ? `Válido (${ssl.emisor})` : "No confiable",
+          estado: ssl.autorizado && !ssl.esAutofirmado ? (ssl.esReciente ? "warning" : "safe") : "danger"
+        });
+        detalles.push({
+          label: "📅 Antigüedad SSL",
+          valor: ssl.diasActivo !== undefined ? `${ssl.diasActivo} días` : "N/A",
+          estado: ssl.esReciente ? "warning" : "safe"
+        });
+      } else {
+        detalles.push({
+          label: "🔒 Certificado SSL",
+          valor: "Sin SSL / Inseguro",
+          estado: "danger"
+        });
+      }
+    }
+
+    // Agregar datos de Inspección DOM / Formularios
+    if (analysisResult.inspeccion_dom && analysisResult.inspeccion_dom.analizado) {
+      const dom = analysisResult.inspeccion_dom;
+      if (dom.titulo) {
+        detalles.push({
+          label: "📄 Título de la página",
+          valor: dom.titulo.length > 30 ? dom.titulo.substring(0, 30) + '...' : dom.titulo,
+          estado: dom.marcaEnTitulo ? "danger" : "safe"
+        });
+      }
+      if (dom.tienePassword || dom.tieneTarjeta) {
+        detalles.push({
+          label: "🚨 Formulario Sensible",
+          valor: dom.tieneTarjeta ? "Captura Tarjeta/CVV" : "Captura Contraseñas",
+          estado: "danger"
+        });
+      }
+    }
+
+    detalles.push({
+      label: "Indicadores encontrados",
+      valor: analysisResult.indicadores.length,
+      estado: analysisResult.indicadores.length === 0 ? "safe" : analysisResult.indicadores.length <= 2 ? "warning" : "danger"
+    });
 
     this.elements.detailsGrid.innerHTML = detalles.map(detalle => `
       <div class="detail-item">

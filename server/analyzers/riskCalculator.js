@@ -1,7 +1,41 @@
 class RiskCalculator {
-  calcular(indicadores, caracteristicas, verificacionesExternas, mlResult = null) {
+  calcular(indicadores, caracteristicas, verificacionesExternas, mlResult = null, sslResult = null, domResult = null) {
     let puntuacion = 0;
     const factores = [];
+
+    // Factores de Inspección de Certificado SSL/TLS
+    if (sslResult && sslResult.analizado) {
+      if (sslResult.factores && sslResult.factores.length > 0) {
+        sslResult.factores.forEach(f => factores.push(f));
+      }
+      if (!sslResult.autorizado && sslResult.tieneSsl) {
+        puntuacion += 4;
+      } else if (sslResult.esAutofirmado) {
+        puntuacion += 4;
+      } else if (sslResult.esReciente) {
+        puntuacion += 3;
+      } else if (sslResult.diasActivo > 90 && sslResult.autorizado) {
+        puntuacion = Math.max(0, puntuacion - 1);
+      }
+    }
+
+    // Factores de Inspección de DOM y Formularios
+    if (domResult && domResult.analizado) {
+      if (domResult.factores && domResult.factores.length > 0) {
+        domResult.factores.forEach(f => factores.push(f));
+      }
+      if (domResult.tieneTarjeta) {
+        puntuacion += 6;
+      } else if (domResult.tienePassword) {
+        puntuacion += 5;
+      }
+      if (domResult.marcaEnTitulo) {
+        puntuacion += 4;
+      }
+      if (domResult.metaRefresh) {
+        puntuacion += 2;
+      }
+    }
 
     // Factores de Machine Learning
     if (mlResult) {
@@ -145,7 +179,13 @@ class RiskCalculator {
     }
 
     // Garantizar un mínimo de puntuación si se detectan amenazas locales de alta fidelidad
-    if (tieneHomografo) {
+    const tieneFormularioSospechoso = domResult && domResult.analizado && (domResult.tienePassword || domResult.tieneTarjeta);
+    if (tieneFormularioSospechoso) {
+      if (puntuacion < 7) {
+        puntuacion = 7;
+        factores.push('Mínimo de puntuación aplicado por formulario de credenciales/pagos no oficial (7)');
+      }
+    } else if (tieneHomografo) {
       if (puntuacion < 7) {
         puntuacion = 7;
         factores.push('Mínimo de puntuación aplicado por ataque de homógrafo (7)');
